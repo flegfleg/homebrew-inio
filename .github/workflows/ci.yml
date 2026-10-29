@@ -50,11 +50,14 @@ jobs:
       # Taps this checkout as <owner>/inio.
       - uses: Homebrew/actions/setup-homebrew@main
 
+      # Homebrew refuses to load an audit target from a tap it does not trust.
+      - run: brew trust --tap "${{ github.repository_owner }}/inio"
+
       - run: brew style --cask "$CASK"
 
   install:
     if: ${{ inputs.install }}
-    # The cask needs macOS 26 (`depends_on macos: ">= :tahoe"`).
+    # The cask needs macOS 26 (`depends_on macos: :tahoe`).
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +65,9 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - uses: Homebrew/actions/setup-homebrew@main
+
+      # Homebrew refuses to load an audit target from a tap it does not trust.
+      - run: brew trust --tap "${{ github.repository_owner }}/inio"
 
       - name: Style and audit
         run: |

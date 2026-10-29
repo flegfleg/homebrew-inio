@@ -18,7 +18,7 @@ cask "inio-cli" do
     strategy :github_latest
   end
 
-  depends_on macos: ">= :tahoe"
+  depends_on macos: :tahoe
 
   binary "inio"
   binary "inio-mcp"
