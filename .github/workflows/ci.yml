@@ -1,0 +1,94 @@
+# Checks the cask. On a push or a pull request: style, on Linux (cheap).
+# With `install` (the release workflow, or a manual run): an online audit,
+# then a real install on macOS, checks on what it installed, and an uninstall.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  pull_request:
+    paths-ignore: ["**.md"]
+  workflow_dispatch:
+    inputs:
+      install:
+        description: Install the cask and check the tools
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to check (the release workflow passes the bumped cask's)
+        type: string
+        default: ""
+      install:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow_ref }}-${{ inputs.ref || github.ref }}
+  # Only a newer push to the same pull request cancels; never a release check.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CASK: ${{ github.repository_owner }}/inio/inio-cli
+  # The team; the tools are signed with its Developer ID Application certificate.
+  TEAM_ID: 87AK32V59Y
+
+jobs:
+  style:
+    if: ${{ !inputs.install }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      # Taps this checkout as <owner>/inio.
+      - uses: Homebrew/actions/setup-homebrew@main
+
+      - run: brew style --cask "$CASK"
+
+  install:
+    if: ${{ inputs.install }}
+    # The cask needs macOS 26 (`depends_on macos: ">= :tahoe"`).
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: Homebrew/actions/setup-homebrew@main
+
+      - name: Style and audit
+        run: |
+          brew style --cask "$CASK"
+          brew audit --cask --strict --online "$CASK"
+
+      - name: Install
+        run: brew install --cask "$CASK"
+
+      - name: Check the installed tools
+        run: |
+          version="$(brew info --cask --json=v2 "$CASK" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["casks"][0]["version"]')"
+          for tool in inio inio-mcp; do
+            path="$(brew --prefix)/bin/${tool}"
+            echo "== ${path}"
+            codesign --verify --strict --check-notarization "$path"
+            details="$(codesign -dvv "$path" 2>&1)"
+            echo "$details" | grep -q "^Authority=Developer ID Application" || { echo "::error::${tool} is not signed with Developer ID Application"; exit 1; }
+            echo "$details" | grep -q "^TeamIdentifier=${TEAM_ID}$" || { echo "::error::${tool} is not signed by team ${TEAM_ID}"; exit 1; }
+            echo "$details" | grep -q "flags=.*runtime" || { echo "::error::${tool} is not under the hardened runtime"; exit 1; }
+            reported="$("$path" --version)"
+            [ "$reported" = "$version" ] || { echo "::error::${tool} --version says '${reported}', the cask says '${version}'"; exit 1; }
+          done
+
+      - name: Uninstall
+        run: |
+          brew uninstall --cask "$CASK"
+          for tool in inio inio-mcp; do
+            [ ! -e "$(brew --prefix)/bin/${tool}" ] || { echo "::error::${tool} is still linked after uninstall"; exit 1; }
+          done

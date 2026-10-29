@@ -1,0 +1,58 @@
+# A published release (scripts/publish-cli-tools.sh in the app's repository
+# makes it, with the zip attached) points the cask at it, commits that to the
+# default branch, then installs the new cask on a clean runner.
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to point the cask at (e.g. v1.5.0)
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.commit.outputs.ref }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Point the cask at the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/bump-cask.sh "$TAG"
+
+      - name: Commit
+        id: commit
+        run: |
+          if git diff --quiet; then
+            echo "The cask already names ${TAG}."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "inio-cli ${TAG#v}"
+            git push origin "HEAD:${{ github.event.repository.default_branch }}"
+          fi
+          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  # A push made with the workflow token starts no workflow, so CI runs here.
+  check:
+    needs: bump
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.bump.outputs.ref }}
+      install: true
