@@ -50,6 +50,14 @@ jobs:
       # Taps this checkout as <owner>/inio.
       - uses: Homebrew/actions/setup-homebrew@main
 
+      # setup-homebrew checks the tap out at the event's commit (github.sha)
+      # and so discards the ref the step above took. On a release event that
+      # commit is the one before the cask bump, so the audit would read the
+      # old cask ("Version '1.5.0' differs from '1.6.0' retrieved by
+      # livecheck", v1.5.0 and v1.6.0). Put the requested commit back.
+      - if: ${{ inputs.ref != '' }}
+        run: git checkout --force "${{ inputs.ref }}"
+
       # Homebrew refuses to load an audit target from a tap it does not trust.
       - run: brew trust --tap "${{ github.repository_owner }}/inio"
 
@@ -65,6 +73,10 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - uses: Homebrew/actions/setup-homebrew@main
+
+      # See the style job: setup-homebrew moved the checkout to github.sha.
+      - if: ${{ inputs.ref != '' }}
+        run: git checkout --force "${{ inputs.ref }}"
 
       # Homebrew refuses to load an audit target from a tap it does not trust.
       - run: brew trust --tap "${{ github.repository_owner }}/inio"
