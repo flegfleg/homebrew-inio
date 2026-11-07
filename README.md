@@ -12,7 +12,7 @@ Both tools talk to the running inio app. They need macOS 26 or later.
 With [Homebrew](https://brew.sh):
 
 ```sh
-brew install --cask flegfleg/inio/inio-cli
+brew install --cask ok64-de/inio/inio-cli
 ```
 
 Update:
@@ -31,7 +31,7 @@ No step needs `sudo`. Homebrew links the tools into its own `bin` folder, which 
 
 ### Without Homebrew
 
-1. Download `inio-cli-<version>.zip` from the [latest release](https://github.com/flegfleg/homebrew-inio/releases/latest).
+1. Download `inio-cli-<version>.zip` from the [latest release](https://github.com/ok64-de/homebrew-inio/releases/latest).
 2. Move `inio` and `inio-mcp` into a folder on your `PATH` that you own, for example `~/.local/bin`.
 
 To update, replace both files. To remove, delete them.

@@ -8,10 +8,10 @@ cask "inio-cli" do
   version "1.6.0"
   sha256 "7d3eb18902f79bf03d15e421c5a1619ab9ea31eb1444944674211dc93f39c948"
 
-  url "https://github.com/flegfleg/homebrew-inio/releases/download/v#{version}/inio-cli-#{version}.zip"
+  url "https://github.com/ok64-de/homebrew-inio/releases/download/v#{version}/inio-cli-#{version}.zip"
   name "inio command-line tools"
   desc "Command-line tool and MCP server for the inio notes app"
-  homepage "https://github.com/flegfleg/homebrew-inio"
+  homepage "https://github.com/ok64-de/homebrew-inio"
 
   livecheck do
     url :url
